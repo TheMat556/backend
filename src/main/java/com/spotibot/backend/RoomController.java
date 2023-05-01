@@ -9,79 +9,70 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 
 @RestController
 @RequestMapping("/api")
 public class RoomController {
-	private RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
+	private final RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
 	/**
-	 This method handles the HTTP POST request to create a room.
-	 The request path is "/create_room" and it consumes JSON data.
-	 It checks if the user is identified and if not, generates a random user identifier
-	 and stores it in the user's session. It creates a new room with the specified
-	 parameters and puts it in a new UserSession object, which is then added to a
-	 userSessionCache. If the user is already identified, it retrieves the UserSession
-	 object from the userSessionCache and returns the room associated with the user.
-	 @param session - the HttpSession object containing the user's session data
-	 @param createdRoom - the Room object containing the room parameters specified in the request body
-	 @return a ResponseEntity object containing the created room object or the room associated with the user
+	 * Creates a new {@link Room} for music playback and returns it as a response entity. This method is asynchronous
+	 * and returns a CompletableFuture to allow for non-blocking processing.
+	 *
+	 * @param session The HttpSession for the current request.
+	 * @param createdRoom The Room object containing the details of the new room to be created.
+	 * @return A CompletableFuture containing a ResponseEntity with either the newly created room or the user's current room.
 	 */
-	@RequestMapping(path = "/create_room", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<Object> createRoom(HttpSession session, @RequestBody Room createdRoom) {
+	@PostMapping(path = "/create_room", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public CompletableFuture<ResponseEntity<Object>> createRoom(HttpSession session, @RequestBody Room createdRoom) {
 		String userIdentifier = (String) session.getAttribute("userIdentifier");
 
-		if(userIdentifier == "" || userIdentifier == null)
-		{
+		if(userIdentifier == null || userIdentifier.isEmpty()) {
 			String randomUserIdentifier = randomStringGenerator.generateRandomIdentifier(10);
 			session.setAttribute("userIdentifier", randomUserIdentifier);
 
 			UserSession userSession = new UserSession();
-			Room room = new Room(randomStringGenerator.generateRandomIdentifier(5),  true, createdRoom.isGuestCanPause(), createdRoom.getVotesToSkip());
+			Room room = new Room(randomStringGenerator.generateRandomIdentifier(5), true, createdRoom.isGuestCanPause(), createdRoom.getVotesToSkip());
 			userSession.setUserRoom(room);
 
 			DataManagement.userSessionCache.put(randomUserIdentifier, userSession);
-			return ResponseEntity.ok(room);
-		}
-		else
-		{
+
+			return CompletableFuture.completedFuture(ResponseEntity.ok(room));
+		} else {
 			UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
-			return ResponseEntity.ok(userSession.getUserRoom());
+
+			return CompletableFuture.completedFuture(ResponseEntity.ok(userSession.getUserRoom()));
 		}
 	}
 
 	/**
-	 Retrieves a {@link Room} object associated with the given room identifier from the user session cache.
-	 If no room identifier is specified, returns the {@link Room} object associated with the current user's session.
-	 Returns an empty {@link ResponseEntity} if no matching {@link Room} object is found.
-	 @param request The {@link HttpServletRequest} object representing the current HTTP request.
-	 @param roomIdentifier The room identifier of the {@link Room} object to retrieve, or an empty string to retrieve the {@link Room} object associated with the current user's session.
-	 @return A {@link ResponseEntity} object containing the matching {@link Room} object, or an empty response if no matching {@link Room} object is found.
+	 * Retrieves the {@link Room} object associated with the given room identifier and returns it as a ResponseEntity.
+	 * This method is asynchronous and returns a CompletableFuture to allow for non-blocking processing.
+	 *
+	 * @param request The HttpServletRequest for the current request.
+	 * @param roomIdentifier The identifier of the room to retrieve.
+	 * @return A CompletableFuture containing a ResponseEntity with either the requested Room object or a no-content response.
 	 */
-	@RequestMapping(path = "/get_room", method = RequestMethod.GET)
-	public ResponseEntity<Object> getRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
+	@GetMapping(path = "/get_room")
+	public CompletableFuture<ResponseEntity<Object>> getRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
 		HttpSession session = request.getSession();
 		String userIdentifier = (String) session.getAttribute("userIdentifier");
 
-		if (roomIdentifier == "" || roomIdentifier == null)
-		{
-			if (userIdentifier.equals(""))
-			{
-				 return ResponseEntity.noContent().build();
+		if (roomIdentifier == null || roomIdentifier.isEmpty()) {
+			if (userIdentifier == null || userIdentifier.isEmpty()) {
+				return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
 			}
-			return ResponseEntity.ok(DataManagement.userSessionCache.get("userIdentifier"));
-		}
-		else
-		{
+			return CompletableFuture.completedFuture(ResponseEntity.ok(DataManagement.userSessionCache.get(userIdentifier).getUserRoom()));
+		} else {
 			Optional<UserSession> matchingUserSession = getMatchingUserSession(roomIdentifier);
 
-			if(matchingUserSession.isEmpty())
-			{
-				return ResponseEntity.noContent().build();
+			if (matchingUserSession.isEmpty()) {
+				return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
 			}
 
-			return ResponseEntity.ok(matchingUserSession);
+			return CompletableFuture.completedFuture(ResponseEntity.ok(matchingUserSession.get().getUserRoom()));
 		}
 	}
 
@@ -92,40 +83,41 @@ public class RoomController {
 	 @param roomIdentifier The room identifier of the {@link Room} object to leave.
 	 @return A {@link ResponseEntity} object indicating whether the operation was successful, or an empty response if no matching {@link Room} object is found.
 	 */
-	@RequestMapping(path = "/leave_room", method = RequestMethod.GET)
-	public ResponseEntity<Object> leaveRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
+	@GetMapping(path = "/leave_room")
+	public CompletableFuture<ResponseEntity<Object>> leaveRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
 		HttpSession session = request.getSession();
-		User userSession = (User) session.getAttribute("userIdentifier");
+		String userIdentifier = (String) session.getAttribute("userIdentifier");
 
-		if (!(roomIdentifier == ""  || roomIdentifier == null))
-		{
-			Optional<UserSession> matchingUserSession = getMatchingUserSession(roomIdentifier);
-
-			if(matchingUserSession.isEmpty())
-			{
-				return ResponseEntity.noContent().build();
-			}
-
-			return ResponseEntity.ok(matchingUserSession);
+		if (roomIdentifier == null || roomIdentifier.isEmpty() || userIdentifier == null || userIdentifier.isEmpty()) {
+			return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
 		}
-		else
-		{
-			return ResponseEntity.noContent().build();
+
+		Optional<UserSession> matchingUserSession = getMatchingUserSession(roomIdentifier);
+
+		if (matchingUserSession.isEmpty()) {
+			return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
 		}
+
+		DataManagement.userSessionCache.remove(userIdentifier);
+		return CompletableFuture.completedFuture(ResponseEntity.ok().build());
 	}
-	
-	//##############
-	//HELPER METHODS
-	//##############
 
+	/**
+	 * Returns an Optional<UserSession> representing the UserSession associated with the given room identifier,
+	 * if one exists in the userSessionCache. This method performs a linear search over the userSessionCache map,
+	 * which may be inefficient for large datasets. Consider using a more efficient data structure if performance is a concern.
+	 *
+	 * @param roomIdentifier the identifier of the room for which to retrieve a matching UserSession.
+	 * @return an Optional<UserSession> representing the UserSession associated with the given room identifier,
+	 *         or an empty Optional if no matching UserSession was found in the userSessionCache.
+	 */
 	public Optional<UserSession> getMatchingUserSession (String roomIdentifier) {
-		Optional<UserSession> matchingUserSession = DataManagement.userSessionCache
+
+		return DataManagement.userSessionCache
 				.values()
 				.stream()
 				.filter(userSession -> userSession.getUserRoom().getRoomIdentifier().equals(roomIdentifier))
 				.findFirst();
-
-		return matchingUserSession;
 	}
 
 }
