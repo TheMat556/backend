@@ -146,7 +146,7 @@ public class SpotifyController {
 	@RequestMapping(path = "/current-song")
 	public ResponseEntity<String> currentSong(@RequestParam("code") String roomIdentifier) {
 		SpotifyToken userToken = DataManagement.userSessionCache.get(roomIdentifier).getUserSpotifyToken();
-		Room userRoom = DataManagement.userSessionCache.get(roomIdentifier).getUserRoom();
+		Room userRoom =
 
 		if(userToken == null || userRoom == null)
 		{
@@ -186,15 +186,18 @@ public class SpotifyController {
 	}
 
 	@RequestMapping(path = "/pause-song")
-	public ResponseEntity<String> pauseSong(HttpServletRequest request, @RequestParam("code") String roomID) {
-		HttpSession session = request.getSession();
-		User userSession = (User) session.getAttribute("user");
+	public ResponseEntity<String> pauseSong(HttpServletRequest request, @RequestParam("code") String roomIdentifier) {
+		SpotifyToken userToken = DataManagement.userSessionCache.get(roomIdentifier).getUserSpotifyToken();
+		Room userRoom = DataManagement.userSessionCache.get(roomIdentifier).getUserRoom();
 
-		SpotifyToken token = getTokenFromRoomCode(roomID);
-		Room room = getRoom(roomID);
-
-		if(token == null) {
+		if (userRoom == null)
+		{
 			return ResponseEntity.notFound().build();
+		}
+
+		if (userRoom.ge || userRoom.isGuestCanPause())
+		{
+
 		}
 
 		if(room.getUserSession().equals(userSession) || room.isGuestCanPause()) {

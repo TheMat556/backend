@@ -1,13 +1,12 @@
 package com.spotibot.backend;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Random;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 
 @Getter
 @Setter
@@ -21,7 +20,6 @@ public class Room {
 	private LocalDateTime createdAt;
 	private String currentSong;
 	private ArrayList<Vote> voteList = new ArrayList<Vote>();
-
 	private RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
 	public Room(
