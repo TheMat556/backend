@@ -1,4 +1,4 @@
-package com.spotibot.backend;
+package com.spotibot.backend.spotify;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +19,6 @@ public class SpotifyToken {
 	 expiration time is calculated using the {@link #getNewExpireTime()} method. Otherwise, the provided expiration
 	 time is set directly.
 	 @param authorizationCodeCredentials the authorization code credentials associated with the token
-	 @param expiresIn the expiration time of the token, in seconds since the Unix epoch
 	 */
 	public SpotifyToken(AuthorizationCodeCredentials authorizationCodeCredentials) {
 		setAuthorizationCodeCredentials(authorizationCodeCredentials);

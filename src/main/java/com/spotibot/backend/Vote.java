@@ -9,13 +9,13 @@ import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 @Getter
 @Setter
 public class Vote {
-	private User user;
+	private String userIdentifier;
 	private LocalDateTime createdAt;
 	private String songId;
 	
-	Vote(User user, String songId){
-		setUser(user);
-		setCreatedAt(LocalDateTime.now());
-		setSongId(songId);
+	public Vote(String userIdentifier, String songId){
+		this.userIdentifier = userIdentifier;
+		createdAt = LocalDateTime.now();
+		this.songId = songId;
 	}
 }

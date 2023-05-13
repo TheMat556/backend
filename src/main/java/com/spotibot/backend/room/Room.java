@@ -1,5 +1,7 @@
-package com.spotibot.backend;
+package com.spotibot.backend.room;
 
+import com.spotibot.backend.RandomStringGenerator;
+import com.spotibot.backend.Vote;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,10 +18,11 @@ public class Room {
 	private String roomIdentifier;
 	private boolean hasHostPrivileges;
 	private boolean guestCanPause;
+	private boolean currentlyPlaying;
 	private int votesToSkip;
 	private LocalDateTime createdAt;
 	private String currentSong;
-	private ArrayList<Vote> voteList = new ArrayList<Vote>();
+	private ArrayList<Vote> voteList = new ArrayList<>();
 	private RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
 	public Room(
@@ -54,5 +57,7 @@ public class Room {
 		return voteList.size();
 	}
 
-
+	public boolean hasUserAlreadyVoted(String userIdentifier) {
+		return voteList.stream().anyMatch(vote -> vote.getUserIdentifier().equals(userIdentifier));
+	}
 }

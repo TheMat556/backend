@@ -1,14 +1,15 @@
-package com.spotibot.backend;
+package com.spotibot.backend.room;
 
+import com.spotibot.backend.DataManagement;
+import com.spotibot.backend.RandomStringGenerator;
+import com.spotibot.backend.UserSession;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
 
@@ -66,7 +67,7 @@ public class RoomController {
 			}
 			return CompletableFuture.completedFuture(ResponseEntity.ok(DataManagement.userSessionCache.get(userIdentifier).getUserRoom()));
 		} else {
-			Optional<UserSession> matchingUserSession = getMatchingUserSession(roomIdentifier);
+			Optional<UserSession> matchingUserSession = DataManagement.getMatchingUserSession(roomIdentifier);
 
 			if (matchingUserSession.isEmpty()) {
 				return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
@@ -92,7 +93,7 @@ public class RoomController {
 			return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
 		}
 
-		Optional<UserSession> matchingUserSession = getMatchingUserSession(roomIdentifier);
+		Optional<UserSession> matchingUserSession = DataManagement.getMatchingUserSession(roomIdentifier);
 
 		if (matchingUserSession.isEmpty()) {
 			return CompletableFuture.completedFuture(ResponseEntity.noContent().build());
@@ -100,24 +101,6 @@ public class RoomController {
 
 		DataManagement.userSessionCache.remove(userIdentifier);
 		return CompletableFuture.completedFuture(ResponseEntity.ok().build());
-	}
-
-	/**
-	 * Returns an Optional<UserSession> representing the UserSession associated with the given room identifier,
-	 * if one exists in the userSessionCache. This method performs a linear search over the userSessionCache map,
-	 * which may be inefficient for large datasets. Consider using a more efficient data structure if performance is a concern.
-	 *
-	 * @param roomIdentifier the identifier of the room for which to retrieve a matching UserSession.
-	 * @return an Optional<UserSession> representing the UserSession associated with the given room identifier,
-	 *         or an empty Optional if no matching UserSession was found in the userSessionCache.
-	 */
-	public Optional<UserSession> getMatchingUserSession (String roomIdentifier) {
-
-		return DataManagement.userSessionCache
-				.values()
-				.stream()
-				.filter(userSession -> userSession.getUserRoom().getRoomIdentifier().equals(roomIdentifier))
-				.findFirst();
 	}
 
 }
