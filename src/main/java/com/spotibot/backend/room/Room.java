@@ -1,5 +1,6 @@
 package com.spotibot.backend.room;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.spotibot.backend.RandomStringGenerator;
 import com.spotibot.backend.Vote;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(value = { "randomStringGenerator" })
 public class Room {
 	private String roomIdentifier;
 	private boolean hasHostPrivileges;
@@ -23,7 +25,7 @@ public class Room {
 	private LocalDateTime createdAt;
 	private String currentSong;
 	private ArrayList<Vote> voteList = new ArrayList<>();
-	private RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
+	public RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
 	public Room(
 			String roomIdentifier,

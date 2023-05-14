@@ -13,8 +13,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 
+@CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/room")
 public class RoomController {
 	private final RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
