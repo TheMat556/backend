@@ -31,6 +31,7 @@ public class RoomController {
 	public CompletableFuture<ResponseEntity<Object>> createRoom(HttpSession session, @RequestBody Room createdRoom) {
 		String userIdentifier = (String) session.getAttribute("userIdentifier");
 
+		//TODO: Have to check if a user already created a room!
 		if(userIdentifier == null || userIdentifier.isEmpty()) {
 			String randomUserIdentifier = randomStringGenerator.generateRandomIdentifier(10);
 			session.setAttribute("userIdentifier", randomUserIdentifier);

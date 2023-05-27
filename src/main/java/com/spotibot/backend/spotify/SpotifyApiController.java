@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Optional;
 
-
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/spotify")
 public class SpotifyApiController {
@@ -28,6 +28,8 @@ public class SpotifyApiController {
 	SpotifyController spotifyController = new SpotifyController();
 
 	//TODO: Some sort of error checking for each request
+	//TODO: Check if hostPriv. var really is needed -> not so clean with this var
+
 
 	/**
 	 Generates an authorization code URI for the Spotify Web API and returns it in a {@link ResponseEntity} object.
@@ -47,15 +49,15 @@ public class SpotifyApiController {
 	 @return a CompletableFuture object that will eventually hold the ResponseEntity object with the HTTP response
 	 @throws IOException if an I/O error occurs while processing the request or response
 	 */
-	@RequestMapping(path = "/get-user-code")
-	public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String userCode, HttpServletResponse response) throws IOException {
+	@GetMapping(path = "/get-user-code")
+	public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String spotifyUserCode) throws IOException {
 		HttpSession session = request.getSession();
 		String userIdentifier = (String) session.getAttribute(sessionAttribute);
 
 		UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
 		if (userSession != null) {
-			var requestResponse = spotifyController.authorizationCodeRequest(userIdentifier, userCode);
+			var requestResponse = spotifyController.authorizationCodeRequest(userIdentifier, spotifyUserCode);
 			if(requestResponse != null) {
 				return ResponseEntity.ok(requestResponse);
 			} else {

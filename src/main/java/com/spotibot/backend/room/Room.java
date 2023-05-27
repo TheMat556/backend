@@ -18,7 +18,6 @@ import java.util.ArrayList;
 @JsonIgnoreProperties(value = { "randomStringGenerator" })
 public class Room {
 	private String roomIdentifier;
-	private boolean hasHostPrivileges;
 	private boolean guestCanPause;
 	private boolean currentlyPlaying;
 	private int votesToSkip;
@@ -34,7 +33,6 @@ public class Room {
 			int votesToSkip
 			) {
 		this.roomIdentifier = roomIdentifier;
-		this.hasHostPrivileges = hasHostPrivileges;
 		this.guestCanPause = guestCanPause;
 		this.votesToSkip = votesToSkip;
 		this.setCreatedAt(LocalDateTime.now());
