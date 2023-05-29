@@ -7,15 +7,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/room")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class RoomController {
 	private final RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
@@ -27,14 +28,19 @@ public class RoomController {
 	 * @param createdRoom The Room object containing the details of the new room to be created.
 	 * @return A CompletableFuture containing a ResponseEntity with either the newly created room or the user's current room.
 	 */
+
 	@PostMapping(path = "/create_room", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public CompletableFuture<ResponseEntity<Object>> createRoom(HttpSession session, @RequestBody Room createdRoom) {
-		String userIdentifier = (String) session.getAttribute("userIdentifier");
+	public ResponseEntity<Object> createRoom(HttpServletRequest request, @RequestBody Room createdRoom) {
+		HttpSession httpSession = request.getSession();
+		String userIdentifier = (String) httpSession.getAttribute("userIdentifier");
+
+		System.out.println(userIdentifier);
 
 		//TODO: Have to check if a user already created a room!
 		if(userIdentifier == null || userIdentifier.isEmpty()) {
+			//TODO outsource this the creation of useridentifier
 			String randomUserIdentifier = randomStringGenerator.generateRandomIdentifier(10);
-			session.setAttribute("userIdentifier", randomUserIdentifier);
+			httpSession.setAttribute("userIdentifier", randomUserIdentifier);
 
 			UserSession userSession = new UserSession();
 			Room room = new Room(randomStringGenerator.generateRandomIdentifier(5), true, createdRoom.isGuestCanPause(), createdRoom.getVotesToSkip());
@@ -42,11 +48,11 @@ public class RoomController {
 
 			DataManagement.userSessionCache.put(randomUserIdentifier, userSession);
 
-			return CompletableFuture.completedFuture(ResponseEntity.ok(room));
+			return ResponseEntity.ok(room);
 		} else {
 			UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
-			return CompletableFuture.completedFuture(ResponseEntity.ok(userSession.getUserRoom()));
+			return ResponseEntity.ok(userSession.getUserRoom());
 		}
 	}
 

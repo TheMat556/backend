@@ -51,8 +51,9 @@ public class SpotifyApiController {
 	 */
 	@GetMapping(path = "/get-user-code")
 	public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String spotifyUserCode) throws IOException {
-		HttpSession session = request.getSession();
-		String userIdentifier = (String) session.getAttribute(sessionAttribute);
+		HttpSession httpSession = request.getSession();
+		//String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
+		String userIdentifier = httpSession.getId();
 
 		UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
