@@ -47,6 +47,7 @@ public class RoomController {
 
 			return ResponseEntity.ok(room);
 		} else {
+			//TODO: User can create a room and leave and then if he tries to join the session is null!
 			UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
 			return ResponseEntity.ok(userSession.getUserRoom());
