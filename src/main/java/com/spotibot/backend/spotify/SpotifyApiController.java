@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Optional;
 
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @RestController
 @RequestMapping("/spotify")
 public class SpotifyApiController {
@@ -37,8 +37,21 @@ public class SpotifyApiController {
 	 @return A {@link ResponseEntity} object containing the authorization code URI to redirect the user to for authentication.
 	 */
 	@GetMapping(path = "/login")
-	public ResponseEntity<URI> SpotifyLogin() {
-		return ResponseEntity.ok(spotifyController.authorizationCodeUriRequest().execute());
+	public ResponseEntity<URI> SpotifyLogin(HttpServletRequest request) {
+
+		//TODO: We have to send the room as well, otherwise we can not differ between a user and the host!
+
+		HttpSession httpSession = request.getSession();
+		String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
+
+		UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
+
+		if(userSession.getUserSpotifyToken() == null){
+			return ResponseEntity.ok(spotifyController.authorizationCodeUriRequest().execute());
+		}
+		return  ResponseEntity.ok().build();
+
+		//TODO: We have to check if the user is already authenticated at some part!
 	}
 
 	/**
@@ -52,8 +65,7 @@ public class SpotifyApiController {
 	@GetMapping(path = "/get-user-code")
 	public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String spotifyUserCode) throws IOException {
 		HttpSession httpSession = request.getSession();
-		//String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
-		String userIdentifier = httpSession.getId();
+		String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
 
 		UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
@@ -74,6 +86,7 @@ public class SpotifyApiController {
 	 @param request the HttpServletRequest containing the user's session
 	 @return a ResponseEntity with a Boolean indicating whether the user is authenticated or not. If the user is not authenticated, returns noContent(); otherwise, returns ok(true) or ok(false) depending on the authentication status.
 	 */
+	//TODO: I don't think the UI should hold that logic, the backend should check if the user is already authenticated if a request is sent
 	@RequestMapping(path = "/is-authenticated")
 	public ResponseEntity<Boolean> checkSpotifyAuthenticationStatus(HttpServletRequest request) {
 		HttpSession session = request.getSession();
@@ -108,8 +121,9 @@ public class SpotifyApiController {
 	 @throws IOException if there is an error parsing the Spotify API response
 	 @throws ParseException if there is an error parsing the Spotify API response
 	 */
+	//TODO: There seems to be an issue if nothing is currently playing! -> currently playing context is null then.
 	@RequestMapping(path = "/current-song")
-	public ResponseEntity<JSONObject> currentSong(@RequestParam("code") String roomIdentifier) {
+	public ResponseEntity<String> currentSong(@RequestParam("code") String roomIdentifier) {
 		Optional<UserSession> userSession = DataManagement.getMatchingUserSession(roomIdentifier);
 
 		if(userSession.isEmpty()) {
@@ -121,9 +135,10 @@ public class SpotifyApiController {
 			return ResponseEntity.badRequest().build();
 		} else {
 			CurrentlyPlayingContext currentlyPlayingContext = spotifyController.currentlyPlayingContext(userSession.get().getUserSpotifyToken());
+			currentUserSession.getUserRoom().setCurrentlyPlaying(currentlyPlayingContext.getIs_playing());
 
 			if( currentlyPlayingContext != null) {
-				return ResponseEntity.ok(buildCurrentSongContextJSON(currentlyPlayingContext, userSession.get()));
+				return ResponseEntity.ok(buildCurrentSongContextJSON(currentlyPlayingContext, userSession.get()).toString());
 			} else {
 				return ResponseEntity.badRequest().build();
 			}
@@ -167,7 +182,7 @@ public class SpotifyApiController {
 		}
 	}
 
-	@RequestMapping(path = "skip-song")
+	@GetMapping(path = "skip-song")
 	public ResponseEntity<String> skipSong(HttpServletRequest request, @RequestParam("code") String roomIdentifier) {
 		HttpSession session = request.getSession();
 		String userIdentifier = (String) session.getAttribute(sessionAttribute);

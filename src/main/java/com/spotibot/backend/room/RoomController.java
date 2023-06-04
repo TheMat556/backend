@@ -24,7 +24,6 @@ public class RoomController {
 	 * Creates a new {@link Room} for music playback and returns it as a response entity. This method is asynchronous
 	 * and returns a CompletableFuture to allow for non-blocking processing.
 	 *
-	 * @param session The HttpSession for the current request.
 	 * @param createdRoom The Room object containing the details of the new room to be created.
 	 * @return A CompletableFuture containing a ResponseEntity with either the newly created room or the user's current room.
 	 */
@@ -33,8 +32,6 @@ public class RoomController {
 	public ResponseEntity<Object> createRoom(HttpServletRequest request, @RequestBody Room createdRoom) {
 		HttpSession httpSession = request.getSession();
 		String userIdentifier = (String) httpSession.getAttribute("userIdentifier");
-
-		System.out.println(userIdentifier);
 
 		//TODO: Have to check if a user already created a room!
 		if(userIdentifier == null || userIdentifier.isEmpty()) {
