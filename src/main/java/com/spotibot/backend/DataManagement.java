@@ -1,11 +1,9 @@
 package com.spotibot.backend;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import lombok.NoArgsConstructor;
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 
 @NoArgsConstructor
 public final class DataManagement {
@@ -16,6 +14,14 @@ public final class DataManagement {
 				.values()
 				.stream()
 				.filter(userSession -> userSession.getUserRoom().getRoomIdentifier().equals(roomIdentifier))
+				.findFirst();
+	}
+
+	public static Optional<Map.Entry<String, UserSession>> getMatchingEntry(String roomIdentifier) {
+		return userSessionCache
+				.entrySet()
+				.stream()
+				.filter(entry -> entry.getValue().getUserRoom().getRoomIdentifier().equals(roomIdentifier))
 				.findFirst();
 	}
 }
