@@ -12,14 +12,17 @@ import se.michaelthelin.spotify.model_objects.credentials.AuthorizationCodeCrede
 import se.michaelthelin.spotify.model_objects.miscellaneous.CurrentlyPlayingContext;
 import se.michaelthelin.spotify.model_objects.miscellaneous.Device;
 import se.michaelthelin.spotify.model_objects.specification.Artist;
+import se.michaelthelin.spotify.model_objects.specification.Track;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeRefreshRequest;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeRequest;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
 import se.michaelthelin.spotify.requests.data.artists.GetArtistRequest;
 import se.michaelthelin.spotify.requests.data.player.*;
+import se.michaelthelin.spotify.requests.data.search.simplified.SearchTracksRequest;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 
 
 public class SpotifyController {
@@ -35,6 +38,7 @@ public class SpotifyController {
     StartResumeUsersPlaybackRequest startResumeUsersPlayback;
     SkipUsersPlaybackToNextTrackRequest skipUsersPlaybackToNextTrackRequest;
     GetArtistRequest getArtistRequest;
+    SearchTracksRequest searchTracksRequest;
 
     SpotifyController() {
         REDIRECT_URI = SpotifyHttpManager.makeUri(Credentials.apiUri);
@@ -42,14 +46,15 @@ public class SpotifyController {
         authorizationCodeRefreshRequest = spotifyApi.authorizationCodeRefresh().build();
     }
 
-    public AuthorizationCodeUriRequest authorizationCodeUriRequest () {
+    public AuthorizationCodeUriRequest authorizationCodeUriRequest() {
         return spotifyApi.authorizationCodeUri().scope(Credentials.scopes).show_dialog(true).build();
     }
 
     @Nullable
     public String authorizationCodeRequest(UserSession userSession, String userCode) {
         authorizationCodeRequest = spotifyApi.authorizationCode(userCode).build();
-        try {
+        try
+        {
             authorizationCodeCredentials = authorizationCodeRequest.execute();
             //TODO: Update or create insertion!!!
 
@@ -60,7 +65,8 @@ public class SpotifyController {
             userSession.setUserSpotifyToken(spotifyToken);
 
             return "<html><head><script>window.close();</script></head><body>Closing tab...</body></html>";
-        } catch (IOException | SpotifyWebApiException | org.apache.hc.core5.http.ParseException e) {
+        } catch (IOException | SpotifyWebApiException | org.apache.hc.core5.http.ParseException e)
+        {
             System.out.println("Error" + e.getMessage());
             return null;
         }
@@ -75,8 +81,7 @@ public class SpotifyController {
         try
         {
             return getInformationAboutUsersCurrentPlaybackRequest.execute();
-        }
-        catch (IOException | ParseException | SpotifyWebApiException e)
+        } catch (IOException | ParseException | SpotifyWebApiException e)
         {
             return null;
         }
@@ -86,15 +91,28 @@ public class SpotifyController {
         spotifyApi.setAccessToken(spotifyToken.getAccessToken());
         spotifyApi.setRefreshToken(spotifyToken.getRefreshToken());
 
-        authorizationCodeRefreshRequest = spotifyApi.authorizationCodeRefresh().build();
+        authorizationCodeRefreshRequest = spotifyApi
+                .authorizationCodeRefresh()
+                .refresh_token(spotifyToken.getRefreshToken())
+                .build();
 
         try
         {
-            var authorizationCodeCredentials = authorizationCodeRefreshRequest.execute();
-            spotifyToken.setAuthorizationCodeCredentials(authorizationCodeCredentials);
+            AuthorizationCodeCredentials authorizationCodeCredentials = authorizationCodeRefreshRequest.execute();
+            var authorizationCodeCredentialsBuilder = new AuthorizationCodeCredentials.Builder();
+
+            authorizationCodeCredentialsBuilder.setRefreshToken(spotifyToken.getRefreshToken());
+            authorizationCodeCredentialsBuilder.setAccessToken(authorizationCodeCredentials.getAccessToken());
+            authorizationCodeCredentialsBuilder.setTokenType(spotifyToken.getTokenType());
+            authorizationCodeCredentialsBuilder.setExpiresIn(authorizationCodeCredentials.getExpiresIn());
+            authorizationCodeCredentialsBuilder.setScope(spotifyToken.getScope());
+
+            AuthorizationCodeCredentials refreshedAuthorizationCodeCredentials = authorizationCodeCredentialsBuilder.build();
+
+            spotifyToken.setAuthorizationCodeCredentials(refreshedAuthorizationCodeCredentials);
+            spotifyToken.setExpiresIn(refreshedAuthorizationCodeCredentials.getExpiresIn());
             return true;
-        }
-        catch (IOException | ParseException | SpotifyWebApiException e)
+        } catch (IOException | ParseException | SpotifyWebApiException e)
         {
             e.printStackTrace();
             return false;
@@ -110,8 +128,7 @@ public class SpotifyController {
         try
         {
             return getUsersAvailableDevicesRequest.execute();
-        }
-        catch (IOException | ParseException | SpotifyWebApiException e)
+        } catch (IOException | ParseException | SpotifyWebApiException e)
         {
             return null;
         }
@@ -126,8 +143,7 @@ public class SpotifyController {
         try
         {
             return startResumeUsersPlaybackRequest.execute();
-        }
-        catch (IOException | ParseException | SpotifyWebApiException e)
+        } catch (IOException | ParseException | SpotifyWebApiException e)
         {
             return null;
         }
@@ -142,8 +158,7 @@ public class SpotifyController {
         {
             pauseUsersPlaybackRequest.execute();
             return true;
-        }
-        catch (ParseException | SpotifyWebApiException | IOException e)
+        } catch (ParseException | SpotifyWebApiException | IOException e)
         {
             e.printStackTrace();
             return false;
@@ -159,12 +174,26 @@ public class SpotifyController {
         {
             startResumeUsersPlayback.execute();
             return true;
-        }
-        catch (ParseException | SpotifyWebApiException | IOException e)
+        } catch (ParseException | SpotifyWebApiException | IOException e)
         {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public Boolean checkSpotifyAuthenticationStatus(SpotifyToken spotifyToken) {
+        if (spotifyToken.getExpiresIn() <= (System.currentTimeMillis() / 1000 + 10))
+        {
+            if (refreshSpotifyToken(spotifyToken))
+            {
+                return true;
+            } else
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public boolean skipCurrentlyPlayingSong(SpotifyToken spotifyToken) {
@@ -177,29 +206,77 @@ public class SpotifyController {
         {
             skipUsersPlaybackToNextTrackRequest.execute();
             return true;
-        }
-        catch (ParseException | SpotifyWebApiException | IOException e)
+        } catch (ParseException | SpotifyWebApiException | IOException e)
         {
             e.printStackTrace();
             return false;
         }
     }
 
+    public boolean rollBackToPreviousSong(SpotifyToken spotifyToken) {
+        spotifyApi.setAccessToken(spotifyToken.getAccessToken());
+        spotifyApi.setRefreshToken(spotifyToken.getRefreshToken());
+
+        SkipUsersPlaybackToPreviousTrackRequest skipUsersPlaybackToPreviousTrackRequest = spotifyApi.skipUsersPlaybackToPreviousTrack().build();
+
+        try
+        {
+            skipUsersPlaybackToPreviousTrackRequest.execute();
+            return true;
+        } catch (IOException | ParseException | SpotifyWebApiException e)
+        {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public Track[] searchSong(SpotifyToken spotifyToken, String queryString) {
+        spotifyApi.setAccessToken(spotifyToken.getAccessToken());
+        spotifyApi.setRefreshToken(spotifyToken.getRefreshToken());
+
+        searchTracksRequest = spotifyApi.searchTracks(queryString).build();
+
+        try
+        {
+            var result = searchTracksRequest.execute();
+            return (Track[]) Arrays.copyOfRange(result.getItems(), 0, 5);
+        } catch (IOException | ParseException | SpotifyWebApiException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Boolean addTrackToPlayBack(SpotifyToken spotifyToken, String songHref) {
+        spotifyApi.setAccessToken(spotifyToken.getAccessToken());
+        spotifyApi.setRefreshToken(spotifyToken.getRefreshToken());
+
+        AddItemToUsersPlaybackQueueRequest addItemToUsersPlaybackQueueRequest = spotifyApi.addItemToUsersPlaybackQueue(songHref).build();
+
+        try
+        {
+            addItemToUsersPlaybackQueueRequest.execute();
+            return true;
+        } catch (IOException | ParseException | SpotifyWebApiException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
-     Updates or creates a new Spotify access token for the user identified by {@code userIdentifier}.
-     @param userIdentifier the identifier of the user
-     @param acc the new authorization code credentials to create or update the token
+     * Updates or creates a new Spotify access token for the user identified by {@code userIdentifier}.
+     *
+     * @param userIdentifier the identifier of the user
+     * @param acc            the new authorization code credentials to create or update the token
      */
     public void updateOrCreateToken(String userIdentifier, AuthorizationCodeCredentials acc) {
         UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
         SpotifyToken currentUserToken = userSession.getUserSpotifyToken();
 
-        if(currentUserToken == null)
+        if (currentUserToken == null)
         {
             SpotifyToken newUserToken = new SpotifyToken(acc);
             userSession.setUserSpotifyToken(newUserToken);
-        }
-        else
+        } else
         {
             currentUserToken.setAuthorizationCodeCredentials(acc);
         }
@@ -213,8 +290,7 @@ public class SpotifyController {
         {
             final Artist artist = getArtistRequest.execute();
             return artist.getName();
-        }
-        catch (ParseException | SpotifyWebApiException | IOException e)
+        } catch (ParseException | SpotifyWebApiException | IOException e)
         {
             e.printStackTrace();
             return null;
