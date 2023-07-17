@@ -261,6 +261,7 @@ public class SpotifyApiController {
             {
                 if (spotifyController.skipCurrentlyPlayingSong(currentUserSession.getUserSpotifyToken()))
                 {
+                    currentUserSession.getUserRoom().clearVoteList();
                     return ResponseEntity.status(HttpStatus.OK).body("");
                 } else
                 {
