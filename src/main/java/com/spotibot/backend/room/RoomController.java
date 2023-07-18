@@ -34,7 +34,8 @@ public class RoomController {
      * @return A CompletableFuture containing a ResponseEntity with either the newly created room or the user's current room.
      */
     @PostMapping(path = "/create_room", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Object> createRoom(HttpServletRequest request, @RequestBody Room createdRoom) {
+    public ResponseEntity<Object> createRoom(HttpServletRequest request, @RequestBody Room createdRoom)
+    {
         String userIdentifier = checkOrCreateUserIdentifierInSession(request);
         UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
 
@@ -45,12 +46,33 @@ public class RoomController {
             userSession.setUserRoom(room);
             DataManagement.userSessionCache.put(userIdentifier, userSession);
         }
+        else
+        {
+            userSession.getUserRoom().setVotesToSkip(createdRoom.getVotesToSkip());
+            userSession.getUserRoom().setGuestCanPause(createdRoom.isGuestCanPause());
+        }
+
+        return ResponseEntity.status(HttpStatus.OK).body(userSession.getUserRoom());
+    }
+
+    @GetMapping(path = "/check-if-user-has-room")
+    public ResponseEntity<Room> checkIfUserHasRoom(HttpServletRequest request)
+    {
+        String userIdentifier = checkOrCreateUserIdentifierInSession(request);
+        UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
+
+        if (userSession == null)
+        {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+        }
 
         return ResponseEntity.ok(userSession.getUserRoom());
     }
 
     @GetMapping(path = "/check-room-owner")
-    public ResponseEntity<Boolean> checkRoomOwner(HttpServletRequest request, @RequestParam("roomIdentifier") String roomIdentifier) {
+    public ResponseEntity<Boolean> checkRoomOwner(HttpServletRequest request, @RequestParam("roomIdentifier") String roomIdentifier)
+    {
         String userIdentifier = checkOrCreateUserIdentifierInSession(request);
         Optional<Map.Entry<String, UserSession>> userEntry = DataManagement.getMatchingEntry(roomIdentifier);
 
@@ -59,12 +81,14 @@ public class RoomController {
             if (userEntry.get().getKey().equals(userIdentifier))
             {
                 return ResponseEntity.ok().body(true);
-            } else
+            }
+            else
             {
                 return ResponseEntity.ok().body(false);
             }
 
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -80,10 +104,12 @@ public class RoomController {
      * @return A CompletableFuture containing a ResponseEntity with either the requested Room object or a no-content response.
      */
     @GetMapping(path = "/get_room")
-    public ResponseEntity<Object> getRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
+    public ResponseEntity<Object> getRoom(HttpServletRequest request, @RequestParam String roomIdentifier)
+    {
         checkOrCreateUserIdentifierInSession(request);
         Optional<UserSession> matchingUserSession = DataManagement.getMatchingUserSession(roomIdentifier);
 
+        //Check if the room still exists
         if (matchingUserSession.isEmpty())
         {
             return ResponseEntity.notFound().build();
@@ -101,14 +127,16 @@ public class RoomController {
      * @return A {@link ResponseEntity} object indicating whether the operation was successful, or an empty response if no matching {@link Room} object is found.
      */
     @GetMapping(path = "/leave_room")
-    public ResponseEntity<Object> leaveRoom(HttpServletRequest request, @RequestParam String roomIdentifier) {
+    public ResponseEntity<Object> leaveRoom(HttpServletRequest request, @RequestParam String roomIdentifier)
+    {
         String userIdentifier = checkOrCreateUserIdentifierInSession(request);
         Optional<Map.Entry<String, UserSession>> matchingUserSession = DataManagement.getMatchingEntry(roomIdentifier);
 
         if (matchingUserSession.isEmpty())
         {
             return ResponseEntity.notFound().build();
-        } else if (!Objects.equals(userIdentifier, matchingUserSession.get().getKey()))
+        }
+        else if (!Objects.equals(userIdentifier, matchingUserSession.get().getKey()))
         {
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
@@ -118,7 +146,8 @@ public class RoomController {
         return ResponseEntity.ok().build();
     }
 
-    private String checkOrCreateUserIdentifierInSession(HttpServletRequest request) {
+    private String checkOrCreateUserIdentifierInSession(HttpServletRequest request)
+    {
         HttpSession httpSession = request.getSession();
         String userIdentifier = (String) httpSession.getAttribute("userIdentifier");
 
@@ -130,7 +159,8 @@ public class RoomController {
         return userIdentifier;
     }
 
-    private String bindUserIdentifierToSession(HttpSession httpSession) {
+    private String bindUserIdentifierToSession(HttpSession httpSession)
+    {
         String randomUserIdentifier = randomStringGenerator.generateRandomIdentifier(10);
         httpSession.setAttribute("userIdentifier", randomUserIdentifier);
 

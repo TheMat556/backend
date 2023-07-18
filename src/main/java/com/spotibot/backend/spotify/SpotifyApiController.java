@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.miscellaneous.CurrentlyPlayingContext;
 import se.michaelthelin.spotify.model_objects.specification.Track;
-import se.michaelthelin.spotify.requests.data.search.SearchItemRequest;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,7 +41,8 @@ public class SpotifyApiController {
      * @return A {@link ResponseEntity} object containing the authorization code URI to redirect the user to for authentication.
      */
     @GetMapping(path = "/login")
-    public ResponseEntity<URI> SpotifyLogin(HttpServletRequest request, @RequestParam String roomIdentifier) {
+    public ResponseEntity<URI> SpotifyLogin(HttpServletRequest request, @RequestParam String roomIdentifier)
+    {
         HttpSession httpSession = request.getSession();
         String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
         Optional<Map.Entry<String, UserSession>> userSessionEntry = DataManagement.getMatchingEntry(roomIdentifier);
@@ -54,17 +54,20 @@ public class SpotifyApiController {
                 if (userSessionEntry.get().getValue().getUserSpotifyToken() == null)
                 {
                     return ResponseEntity.ok(spotifyController.authorizationCodeUriRequest().execute());
-                } else
+                }
+                else
                 {
                     //Already authenticated
                     return ResponseEntity.status(HttpStatus.CREATED).build();
                 }
-            } else
+            }
+            else
             {
                 //Guest joins the room
                 return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
             }
-        } else
+        }
+        else
         {
             //No Room found
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -81,7 +84,8 @@ public class SpotifyApiController {
      * @throws IOException if an I/O error occurs while processing the request or response
      */
     @GetMapping(path = "/get-user-code")
-    public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String spotifyUserCode) throws IOException {
+    public ResponseEntity<String> getSpotifyUserCode(HttpServletRequest request, @RequestParam("code") String spotifyUserCode) throws IOException
+    {
         HttpSession httpSession = request.getSession();
         String userIdentifier = (String) httpSession.getAttribute(sessionAttribute);
         UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
@@ -93,11 +97,13 @@ public class SpotifyApiController {
             if (requestResponse != null)
             {
                 return ResponseEntity.ok(requestResponse);
-            } else
+            }
+            else
             {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -118,7 +124,8 @@ public class SpotifyApiController {
      */
     //TODO: There seems to be an issue if nothing is currently playing! -> currently playing context is null then.
     @RequestMapping(path = "/current-song")
-    public ResponseEntity<String> currentSong(@RequestParam("code") String roomIdentifier) {
+    public ResponseEntity<String> currentSong(@RequestParam("code") String roomIdentifier)
+    {
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(roomIdentifier);
 
         if (userSession.isPresent())
@@ -128,7 +135,8 @@ public class SpotifyApiController {
             if (currentUserSession.getUserSpotifyToken() == null)
             {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Not authenticated!");
-            } else
+            }
+            else
             {
                 spotifyController.checkSpotifyAuthenticationStatus(userSession.get().getUserSpotifyToken());
                 CurrentlyPlayingContext currentlyPlayingContext = spotifyController.currentlyPlayingContext(userSession.get().getUserSpotifyToken());
@@ -138,7 +146,8 @@ public class SpotifyApiController {
                 {
                     var devices = spotifyController.getDevices(userSession.get().getUserSpotifyToken());
                     return ResponseEntity.status(HttpStatus.UPGRADE_REQUIRED).body(JSONObject.valueToString(devices));
-                } else
+                }
+                else
                 {
                     currentUserSession.getUserRoom().setCurrentlyPlaying(currentlyPlayingContext.getIs_playing());
                     return ResponseEntity.ok(buildCurrentSongContextJSON(currentlyPlayingContext, userSession.get()).toString());
@@ -146,14 +155,17 @@ public class SpotifyApiController {
 
             }
 
-        } else
+        }
+        else
         {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
+    //TODO: Some error handling
     @GetMapping(path = "/devices")
-    public ResponseEntity<String> getDevices(HttpServletRequest request) {
+    public ResponseEntity<String> getDevices(HttpServletRequest request)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
@@ -163,8 +175,10 @@ public class SpotifyApiController {
         return ResponseEntity.status(HttpStatus.OK).body(JSONObject.valueToString(devices));
     }
 
+    ///TODO: What if device id does not exist
     @GetMapping(path = "/force-play")
-    public ResponseEntity<Boolean> forceDeviceToPlay(HttpServletRequest request, @RequestParam("deviceId") String deviceId) {
+    public ResponseEntity<Boolean> forceDeviceToPlay(HttpServletRequest request, @RequestParam("deviceId") String deviceId)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         UserSession userSession = DataManagement.userSessionCache.get(userIdentifier);
@@ -175,7 +189,8 @@ public class SpotifyApiController {
     }
 
     @RequestMapping(path = "/toggle-playing-status")
-    public ResponseEntity<String> togglePlayingStatus(HttpServletRequest request, @RequestParam("code") String roomIdentifier) {
+    public ResponseEntity<String> togglePlayingStatus(HttpServletRequest request, @RequestParam("code") String roomIdentifier)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(roomIdentifier);
@@ -198,34 +213,40 @@ public class SpotifyApiController {
                     if (spotifyController.pauseCurrentlyPlayingSong(spotifyToken))
                     {
                         return ResponseEntity.status(HttpStatus.OK).build();
-                    } else
+                    }
+                    else
                     {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                     }
-                } else
+                }
+                else
                 {
                     if (spotifyController.resumeCurrentlyPausedSong(spotifyToken))
                     {
                         return ResponseEntity.status(HttpStatus.OK).build();
-                    } else
+                    }
+                    else
                     {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                     }
                 }
 
-            } else
+            }
+            else
             {
                 return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
             }
 
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
     @GetMapping(path = "skip-song")
-    public ResponseEntity<String> skipSong(HttpServletRequest request, @RequestParam("code") String roomIdentifier) {
+    public ResponseEntity<String> skipSong(HttpServletRequest request, @RequestParam("code") String roomIdentifier)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(roomIdentifier);
@@ -246,29 +267,31 @@ public class SpotifyApiController {
                 if (!currentUserSession.getUserRoom().hasUserAlreadyVoted(userIdentifier))
                 {
                     currentUserSession.getUserRoom().getVoteList().add(new Vote(userIdentifier, currentUserSession.getUserRoom().getCurrentSong()));
-                    if(currentUserSession.getUserRoom().getVoteListLength() < currentUserSession.getUserRoom().getVotesToSkip())
+                    if (currentUserSession.getUserRoom().getVoteListLength() < currentUserSession.getUserRoom().getVotesToSkip())
                     {
-                        return ResponseEntity.ok().body("Successfully voted!");
+                        return ResponseEntity.ok(createSimpleJsonMessage("voted"));
                     }
-                } else
+                }
+                else
                 {
-                    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body("Already voted!");
+                    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body("");
                 }
             }
 
-            if (hasHostPrivileges(currentUserSession, userIdentifier) ||
-                    currentUserSession.getUserRoom().getVoteListLength() >= currentUserSession.getUserRoom().getVotesToSkip())
+            if (hasHostPrivileges(currentUserSession, userIdentifier) || currentUserSession.getUserRoom().getVoteListLength() >= currentUserSession.getUserRoom().getVotesToSkip())
             {
                 if (spotifyController.skipCurrentlyPlayingSong(currentUserSession.getUserSpotifyToken()))
                 {
                     currentUserSession.getUserRoom().clearVoteList();
-                    return ResponseEntity.status(HttpStatus.OK).body("");
-                } else
+                    return ResponseEntity.ok().body(createSimpleJsonMessage("skipped"));
+                }
+                else
                 {
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("");
                 }
             }
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -278,7 +301,8 @@ public class SpotifyApiController {
     }
 
     @GetMapping(path = "rollback-song")
-    public ResponseEntity<String> rollBack(HttpServletRequest request, @RequestParam("code") String roomIdentifier) {
+    public ResponseEntity<String> rollBack(HttpServletRequest request, @RequestParam("code") String roomIdentifier)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(roomIdentifier);
@@ -298,24 +322,28 @@ public class SpotifyApiController {
             {
                 if (spotifyController.rollBackToPreviousSong(spotifyToken))
                 {
-                    return ResponseEntity.status(HttpStatus.OK).build();
-                } else
-                {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).build();
+                    return ResponseEntity.ok().body(createSimpleJsonMessage("rollback"));
                 }
-            } else
+                else
+                {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                }
+            }
+            else
             {
                 return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
             }
 
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     @PostMapping(path = "search-song")
-    public ResponseEntity<String> searchForSong(HttpServletRequest request, @RequestBody SearchSongRequest searchSongRequest) {
+    public ResponseEntity<String> searchForSong(HttpServletRequest request, @RequestBody SearchSongRequest searchSongRequest)
+    {
         HttpSession session = request.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(searchSongRequest.getRoomIdentifier());
@@ -325,27 +353,27 @@ public class SpotifyApiController {
             spotifyController.checkSpotifyAuthenticationStatus(userSession.get().getUserSpotifyToken());
             Track[] searchResult = spotifyController.searchSong(userSession.get().getUserSpotifyToken(), searchSongRequest.getQueryString());
 
-            JSONArray jsonArray = new JSONArray(Arrays.stream(searchResult)
-                    .map(result -> {
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("artistName", result.getArtists()[0].getName());
-                        jsonObject.put("songName", result.getName());
-                        jsonObject.put("pictureURI", result.getAlbum().getImages()[2].getUrl());
-                        jsonObject.put("songHref", result.getUri());
+            JSONArray jsonArray = new JSONArray(Arrays.stream(searchResult).map(result -> {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("artistName", result.getArtists()[0].getName());
+                jsonObject.put("songName", result.getName());
+                jsonObject.put("pictureURI", result.getAlbum().getImages()[2].getUrl());
+                jsonObject.put("songHref", result.getUri());
 
-                        return jsonObject;
-                    })
-                    .collect(Collectors.toList()));
+                return jsonObject;
+            }).collect(Collectors.toList()));
 
             return ResponseEntity.status(HttpStatus.OK).body(jsonArray.toString());
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     @PostMapping(path = "add-track-to-playback")
-    public ResponseEntity<Boolean> putSongInPlaybackQueue(HttpServletRequest httpServletRequest, @RequestBody AddTrackToPlaybackRequest addTrackToPlaybackRequest) {
+    public ResponseEntity<Boolean> putSongInPlaybackQueue(HttpServletRequest httpServletRequest, @RequestBody AddTrackToPlaybackRequest addTrackToPlaybackRequest)
+    {
         HttpSession session = httpServletRequest.getSession();
         String userIdentifier = (String) session.getAttribute(sessionAttribute);
         Optional<UserSession> userSession = DataManagement.getMatchingUserSession(addTrackToPlaybackRequest.getRoomIdentifier());
@@ -355,7 +383,8 @@ public class SpotifyApiController {
             spotifyController.checkSpotifyAuthenticationStatus(userSession.get().getUserSpotifyToken());
             spotifyController.addTrackToPlayBack(userSession.get().getUserSpotifyToken(), addTrackToPlaybackRequest.getTrackHref());
             return ResponseEntity.status(HttpStatus.OK).body(true);
-        } else
+        }
+        else
         {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -365,26 +394,32 @@ public class SpotifyApiController {
     //HELPER FUNCTIONS
     //################
 
-    private JSONObject buildCurrentSongContextJSON(CurrentlyPlayingContext currentlyPlayingContext, UserSession userSession) {
+    private String createSimpleJsonMessage(String message) {
+        return "{\"message\": \"" + message + "\"}";
+    }
+
+    private JSONObject buildCurrentSongContextJSON(CurrentlyPlayingContext currentlyPlayingContext, UserSession userSession)
+    {
         JSONObject jsonResponse = new JSONObject();
         Track track = (Track) currentlyPlayingContext.getItem();
         Integer votesToSkip = userSession.getUserRoom().getVotesToSkip();
         Integer currentVotesToSkip = userSession.getUserRoom().getVoteList().size();
 
-        jsonResponse.put("title", track.getName());
-        jsonResponse.put("artist", track.getArtists());
-        jsonResponse.put("duration", track.getDurationMs());
-        jsonResponse.put("time", currentlyPlayingContext.getProgress_ms());
-        jsonResponse.put("image_url", track.getAlbum().getImages());
-        jsonResponse.put("is_playing", currentlyPlayingContext.getIs_playing());
-        jsonResponse.put("currentVotesToSkip", currentVotesToSkip);
-        jsonResponse.put("votesToSkip", votesToSkip);
-        jsonResponse.put("id", track.getId());
+        jsonResponse.put("songTitle", track.getName());
+        jsonResponse.put("artist", track.getArtists()[0].getName());
+        jsonResponse.put("songDuration", track.getDurationMs());
+        jsonResponse.put("currentProgress", currentlyPlayingContext.getProgress_ms());
+        jsonResponse.put("currentImgUrl", track.getAlbum().getImages()[0].getUrl());
+        jsonResponse.put("playingStatus", currentlyPlayingContext.getIs_playing());
+        jsonResponse.put("currentVotes", currentVotesToSkip);
+        jsonResponse.put("neededVotesToSkip", votesToSkip);
+        //jsonResponse.put("trackId", track.getId());
 
         return jsonResponse;
     }
 
-    private boolean hasHostPrivileges(UserSession userSession, String userIdentifier) {
+    private boolean hasHostPrivileges(UserSession userSession, String userIdentifier)
+    {
         UserSession currentSession = DataManagement.userSessionCache.get(userIdentifier);
         return userSession.equals(currentSession);
     }
